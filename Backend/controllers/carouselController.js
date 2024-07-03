@@ -1,6 +1,7 @@
 const errorHandler = require('../utils/errorHandler')
 const catchAsyncError = require('../middlewares/catchAsyncError')
 const Carousel = require('../models/carouselModel')
+const bucket = require('../Firebase');
 
 //Get all Carousel - /getAllCarousels
 exports.getAllCarousels = catchAsyncError(async (req, res, next) => {
@@ -23,14 +24,39 @@ exports.getAllCarousels = catchAsyncError(async (req, res, next) => {
 exports.createCarousel = catchAsyncError(async (req, res) => {
     const {link} = req.body
 
-    let BASE_URL = process.env.STATIC_URL
-    if(process.env.NODE_ENV === "production"){
-        BASE_URL = `${req.protocol}://${req.get('host')}/`
-    }
+    // let BASE_URL = process.env.STATIC_URL
+    // if(process.env.NODE_ENV === "production"){
+    //     BASE_URL = `${req.protocol}://${req.get('host')}/`
+    // }
     
-     const image = req.file ? `${BASE_URL}uploads/carousel/${req.file.originalname}` : null;
+    //  const image = req.file ? `${BASE_URL}uploads/carousel/${req.file.originalname}` : null;
+    let imageUrl = null;
+
+    // Check if req.file exists to upload image to Firebase Storage
+    if (req.file) {
+        const originalname = req.file.originalname;
+        const fileUploadPath = `Carousel/${originalname}`;
+
+        // Upload the file to Firebase Storage
+        await bucket.upload(req.file.path, {
+            destination: fileUploadPath,
+            metadata: {
+                contentType: req.file.mimetype
+            }
+        });
+
+        // Construct the image URL
+        const [url] = await bucket.file(fileUploadPath).getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+        });
+
+        imageUrl = url;
+    }
+
+
     const carousel = await Carousel.create({
-        link, image
+        link, image:imageUrl
     })
    
     res.status(200).json({
@@ -38,6 +64,7 @@ exports.createCarousel = catchAsyncError(async (req, res) => {
         carousel
     })
 })
+
 
 
 //Delete carousel - carousel/:id

@@ -2,21 +2,47 @@ const catchAsyncError = require('../middlewares/catchAsyncError')
 const Category = require('../models/categoryModel')
 const errorHandler = require('../utils/errorHandler')
 const Product = require('../models/productModel')
+const bucket = require('../Firebase');
 
 
 //Admin:  creating category = api/admin/category
 exports.createCategory = catchAsyncError(async (req, res) => {
     const {title} = req.body
 
-    let BASE_URL = process.env.STATIC_URL
-    if(process.env.NODE_ENV === "production"){
-        BASE_URL = `${req.protocol}://${req.get('host')}/`
+    // let BASE_URL = process.env.STATIC_URL
+    // if(process.env.NODE_ENV === "production"){
+    //     BASE_URL = `${req.protocol}://${req.get('host')}/`
+    // }
+    //  const image = req.file ? `${BASE_URL}uploads/category/${req.file.originalname}` : null;
+
+    let imageUrl = null;
+
+    // Check if req.file exists to upload image to Firebase Storage
+    if (req.file) {
+        const originalname = req.file.originalname;
+        const fileUploadPath = `Category/${originalname}`;
+
+        // Upload the file to Firebase Storage
+        await bucket.upload(req.file.path, {
+            destination: fileUploadPath,
+            metadata: {
+                contentType: req.file.mimetype
+            }
+        });
+
+        // Construct the image URL
+        const [url] = await bucket.file(fileUploadPath).getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+        });
+
+        imageUrl = url;
     }
-     const image = req.file ? `${BASE_URL}uploads/category/${req.file.originalname}` : null;
 
     const category = await Category.create({
-        title, image
+        title, image:imageUrl
     })
+
     try {
         res.status(200).json({
             success: true,
@@ -46,53 +72,40 @@ exports.getAllCategory = catchAsyncError(async (req, res) => {
     }
 })
 
-//Admin:  update category = api/admin/category/:id
-// exports.updateCategory = catchAsyncError(async (req, res) => {
-//     let category = await Category.findById(req.params.id)
-//     if (!category) {
-//         return next(new errorHandler("Category not found ", 400))
-//     }
-//     try {
-//         category = await Category.findByIdAndUpdate(req.params.id, req.body,
-//             {
-//                 new: true,
-//                 runValidators: true
-//             }
-//         );
-
-//         res.status(201).json({
-//             success: true,
-//             category
-//         });
-//     } catch (error) {
-//         res.status(400).json({
-//             success: false,
-//             error: error.message
-//         })
-//     }
-// })
 
 //Admin: update category = api/admin/category/:id
 exports.updateCategory = catchAsyncError(async (req, res) => {
     const { title } = req.body;
-    let image = null;
+   let imageUrl = null;
 
-    // Check if req.file exists to update image URL
+    // Check if req.file exists to upload image to Firebase Storage
     if (req.file) {
-        let BASE_URL = process.env.STATIC_URL;
-        if (process.env.NODE_ENV === "production") {
-            BASE_URL = `${req.protocol}://${req.get('host')}/`;
-        }
-        image = `${BASE_URL}uploads/category/${req.file.originalname}`;
-    }
+        const originalname = req.file.originalname;
+        const fileUploadPath = `Category/${originalname}`;
 
+        // Upload the file to Firebase Storage
+        await bucket.upload(req.file.path, {
+            destination: fileUploadPath,
+            metadata: {
+                contentType: req.file.mimetype
+            }
+        });
+
+        // Construct the image URL
+        const [url] = await bucket.file(fileUploadPath).getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+        });
+
+        imageUrl = url;
+    }
     // Prepare update fields based on what's provided in the request
     const updateFields = {};
     if (title) {
         updateFields.title = title;
     }
-    if (image) {
-        updateFields.image = image;
+    if (imageUrl) {
+        updateFields.image = imageUrl;
     }
 
     // Find the category by ID and update it

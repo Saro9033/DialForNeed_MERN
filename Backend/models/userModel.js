@@ -34,11 +34,9 @@ const userSchema = new mongoose.Schema({
     },
     postalCode: {
         type: String,
-
     },
     address:{
         type:String,
-
     },
     avatar:{
         type:String,

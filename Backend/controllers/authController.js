@@ -5,22 +5,64 @@ const errorHandler = require("../utils/errorHandler");
 const sendToken = require('../utils/jwt')
 const crypto = require('crypto')
 const Employee = require('../models/employeeModel')
+const bucket = require('../Firebase');
 
 //To register user
-exports.registerUser = catchAsyncError(async (req, res) => {
-    const { name, email, phoneNumber, address, password, postalCode, city, country } = req.body
+// exports.registerUser = catchAsyncError(async (req, res) => {
+//     const { name, email, phoneNumber, address, password, postalCode, city, country } = req.body
 
-    let BASE_URL = process.env.STATIC_URL
-    if(process.env.NODE_ENV === "production"){
-        BASE_URL = `${req.protocol}://${req.get('host')}/`
-    }
+//     let BASE_URL = process.env.STATIC_URL
+//     if(process.env.NODE_ENV === "production"){
+//         BASE_URL = `${req.protocol}://${req.get('host')}/`
+//     }
     
-     const avatar = req.file ? `${BASE_URL}uploads/user/${req.file.originalname}` : null;
-    const user = await User.create({
-        name, email, phoneNumber, address, password, avatar, postalCode, city, country
-    })
-    sendToken(user, 201, res)
-})
+//      const avatar = req.file ? `${BASE_URL}uploads/user/${req.file.originalname}` : null;
+//     const user = await User.create({
+//         name, email, phoneNumber, address, password, avatar, postalCode, city, country
+//     })
+//     sendToken(user, 201, res)
+// })
+exports.registerUser = catchAsyncError(async (req, res) => {
+    const { name, email, phoneNumber, address, password, postalCode, city, country } = req.body;
+
+    let avatarUrl = null;
+
+    if (req.file) {
+        const originalname = req.file.originalname;
+        const fileUploadPath = `User/${originalname}`;
+        
+        // Upload the file to Firebase Storage
+        await bucket.upload(req.file.path, {
+            destination: fileUploadPath,
+            metadata: {
+                contentType: req.file.mimetype
+            }
+        });
+
+        // Construct the avatar URL
+        const [url] = await bucket.file(fileUploadPath).getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+        });
+        
+        avatarUrl = url;
+    }
+
+    try {
+        // Create user in database with avatarUrl
+        const user = await User.create({
+            name, email, phoneNumber, address, password, avatar: avatarUrl, postalCode, city, country
+        });
+
+        sendToken(user, 201, res);
+    } catch (err) {
+        console.error('Error creating user:', err);
+        return res.status(500).json({ error: 'User creation failed' });
+    }
+});
+
+
+
 
 //To Login user = /api/login
 exports.loginUser = catchAsyncError(async (req, res, next) => {
@@ -170,14 +212,34 @@ exports.updateProfile = catchAsyncError(async (req, res, next) => {
         country: req.body.country
     };
 
-    // Check if req.file exists to update avatar
+    // // Check if req.file exists to update avatar
+    // if (req.file) {
+    //     let BASE_URL = process.env.STATIC_URL || '';
+    //     if (process.env.NODE_ENV === "production") {
+    //         BASE_URL = `${req.protocol}://${req.get('host')}/`;
+    //     }
+    //     const avatarUrl = `${BASE_URL}uploads/user/${req.file.filename}`;
+    //     newUserData.avatar = avatarUrl; // Update avatar in newUserData
+    // }
     if (req.file) {
-        let BASE_URL = process.env.STATIC_URL || '';
-        if (process.env.NODE_ENV === "production") {
-            BASE_URL = `${req.protocol}://${req.get('host')}/`;
-        }
-        const avatarUrl = `${BASE_URL}uploads/user/${req.file.filename}`;
-        newUserData.avatar = avatarUrl; // Update avatar in newUserData
+        const originalname = req.file.originalname;
+        const fileUploadPath = `User/${originalname}`;
+
+        // Upload the file to Firebase Storage
+        await bucket.upload(req.file.path, {
+            destination: fileUploadPath,
+            metadata: {
+                contentType: req.file.mimetype
+            }
+        });
+
+        // Construct the avatar URL
+        const [url] = await bucket.file(fileUploadPath).getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+        });
+
+        newUserData.avatar = url; // Update avatar URL in newUserData
     }
 
     // Update user in the database
@@ -200,6 +262,10 @@ exports.updateProfile = catchAsyncError(async (req, res, next) => {
         user
     });
 });
+
+
+
+
 
 
 //Admin : Get All users = 

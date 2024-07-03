@@ -4,7 +4,8 @@ const errorHandler = require('../utils/errorHandler')
 const APIFeatures = require('../utils/apiFeautures')
 const CategoryModel = require('../models/categoryModel')
 const BrandModel = require('../models/brandModel')
-
+const bucket = require('../Firebase');
+const { v4: uuidv4 } = require('uuid');
 
 const getTitle = async (Model, id, fieldName) => {
     try {
@@ -49,36 +50,119 @@ exports.getAllProduct = catchAsyncError(async (req, res, next) => {
 
 
 //Create new product - /products/new
-exports.addProduct = catchAsyncError(async (req, res) => {
-    let images = []
+// exports.addProduct = catchAsyncError(async (req, res) => {
+//     let images = []
 
-    if(req.files?.length > 0){
-        req.files.forEach((file)=>{
-            let BASE_URL = process.env.STATIC_URL
-            if(process.env.NODE_ENV === "production"){
-                BASE_URL = `${req.protocol}://${req.get('host')}/`
+//     if(req.files?.length > 0){
+//         req.files.forEach(async(file)=>{
+//             let imageUrl = null;
+
+//             // let BASE_URL = process.env.STATIC_URL
+//             // if(process.env.NODE_ENV === "production"){
+//             //     BASE_URL = `${req.protocol}://${req.get('host')}/`
+//             // }
+
+//             // let url = `${BASE_URL}uploads/product/${file.originalname}`
+
+//             const originalname = file.originalname;
+//             const fileUploadPath = `Product/${originalname}`;
+    
+//             // Upload the file to Firebase Storage
+//             await bucket.upload(file.path, {
+//                 destination: fileUploadPath,
+//                 metadata: {
+//                     contentType: file.mimetype
+//                 }
+//             });
+    
+//             // Construct the image URL
+//             const [url] = await bucket.file(fileUploadPath).getSignedUrl({
+//                 action: 'read',
+//                 expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+//             });
+    
+//             imageUrl = url;
+
+//             images.push({image:url})
+//         })
+//     }
+
+//     req.body.images = images;
+
+//     req.body.user = req.user.id
+//     const product = await productModel.create(req.body)
+//     try {
+//         res.status(200).json({
+//             success: true,
+//             product
+//         })
+//     } catch (error) {
+//         res.status(400).json({
+//             success: false,
+//             error: error.message
+//         })
+//     }
+// })
+
+exports.addProduct = catchAsyncError(async (req, res) => {
+    let images = [];
+
+    if (req.files?.length > 0) {
+        try {
+            for (const file of req.files) {
+                const originalname = file.originalname;
+                const fileUploadPath = `Product/${uuidv4()}_${originalname}`;
+
+                // Upload the file to Firebase Storage
+                const uploadedFile = await bucket.upload(file.path, {
+                    destination: fileUploadPath,
+                    metadata: {
+                        contentType: file.mimetype
+                    }
+                });
+
+                // Construct the image URL
+                const [url] = await uploadedFile[0].getSignedUrl({
+                    action: 'read',
+                    expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+                });
+
+                // Push the image URL to the images array
+                images.push({ image: url });
+
             }
-            let url = `${BASE_URL}uploads/product/${file.originalname}`
-            images.push({image:url})
-        })
+
+        } catch (error) {
+            // Handle any errors that occurred during image upload
+            return res.status(400).json({
+                success: false,
+                error: error.message
+            });
+        }
     }
 
     req.body.images = images;
+    req.body.user = req.user.id;
 
-    req.body.user = req.user.id
-    const product = await productModel.create(req.body)
     try {
+        // Create product with images array and user ID
+        const product = await productModel.create(req.body);
+
+        // Respond with success and the created product
         res.status(200).json({
             success: true,
             product
-        })
+        });
+
     } catch (error) {
+        // Handle any errors that occurred during product creation
         res.status(400).json({
             success: false,
             error: error.message
-        })
+        });
     }
-})
+});
+
 
 //Get product by ID - /product/{id}
 exports.getSingleProduct = catchAsyncError(async (req, res, next) => {
@@ -105,6 +189,72 @@ exports.getSingleProduct = catchAsyncError(async (req, res, next) => {
 
 
 // Update Product - /products/{id}
+// exports.updateProduct = catchAsyncError(async (req, res, next) => {
+//     let product = await productModel.findById(req.params.id);
+
+//     if (!product) {
+//         return next(new errorHandler("Product not found", 404));
+//     }
+
+//     // Handle images
+//     let images = product.images; // Default to current images
+
+//     // If imagesToDelete is provided, remove specified images
+//     if (req.body.imagesToDelete) {
+//         const imagesToDelete = JSON.parse(req.body.imagesToDelete);
+//         images = images.filter(img => !imagesToDelete.includes(img.image));
+//     }
+
+//     if (req.files && req.files.length > 0) {
+//         images = [
+//             ...images,
+//             ...req.files.map(async(file)  =>  {
+//                 const originalname = file.originalname;
+//                 const fileUploadPath = `Product/${uuidv4()}_${originalname}`;
+
+//                 // Upload the file to Firebase Storage
+//                 const uploadedFile = await bucket.upload(file.path, {
+//                     destination: fileUploadPath,
+//                     metadata: {
+//                         contentType: file.mimetype
+//                     }
+//                 });
+
+//                 // Construct the image URL
+//                 const [url] = await uploadedFile[0].getSignedUrl({
+//                     action: 'read',
+//                     expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+//                 });
+
+//                 return { 
+//                     image: url
+//                  };
+//             })
+//         ];
+//     }
+
+//     req.body.images = images;
+
+//     try {
+//         // Update the product
+//         const updatedProduct = await productModel.findByIdAndUpdate(req.params.id, req.body, {
+//             new: true,
+//             runValidators: true,
+//             useFindAndModify: false
+//         });
+
+//         res.status(200).json({
+//             success: true,
+//             product: updatedProduct
+//         });
+//     } catch (error) {
+//         res.status(400).json({
+//             success: false,
+//             error: error.message
+//         });
+//     }
+// });
+
 exports.updateProduct = catchAsyncError(async (req, res, next) => {
     let product = await productModel.findById(req.params.id);
 
@@ -113,32 +263,63 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
     }
 
     // Handle images
-    let images = product.images; // Default to current images
+    let images = [...product.images]; // Start with current images
 
     // If imagesToDelete is provided, remove specified images
     if (req.body.imagesToDelete) {
         const imagesToDelete = JSON.parse(req.body.imagesToDelete);
+
+        // Delete images from Firebase Storage
+        for (const imageUrl of imagesToDelete) {
+        //     try {
+        //         const filename = imageUrl.split('/').pop(); // Extract filename from URL
+        //         const fileToDelete = bucket.file(`Product/${filename}`);
+        //         await fileToDelete.delete();
+        //     } catch (error) {
+        //         console.error('Error deleting image from Firebase Storage:', error);
+        //     }
+        // }
+
+        // Filter out deleted images from images array
         images = images.filter(img => !imagesToDelete.includes(img.image));
     }
 
-    // If new images are provided, add them to the existing images
-    let BASE_URL = process.env.STATIC_URL
-    if(process.env.NODE_ENV === "production"){
-        BASE_URL = `${req.protocol}://${req.get('host')}/`
-    }
+    // Upload new images to Firebase Storage if provided
     if (req.files && req.files.length > 0) {
-        images = [
-            ...images,
-            ...req.files.map(file => {
-                return { image: `${BASE_URL}uploads/product/${file.originalname}` };
-            })
-        ];
+        try {
+            for (const file of req.files) {
+                const originalname = file.originalname;
+                const fileUploadPath = `Product/${uuidv4()}_${originalname}`;
+
+                // Upload the file to Firebase Storage
+                const uploadedFile = await bucket.upload(file.path, {
+                    destination: fileUploadPath,
+                    metadata: {
+                        contentType: file.mimetype
+                    }
+                });
+
+                // Construct the image URL
+                const [url] = await uploadedFile[0].getSignedUrl({
+                    action: 'read',
+                    expires: '03-09-2491' // Replace with an appropriate expiration date or duration
+                });
+
+                images.push({ image: url });
+            }
+        } catch (error) {
+            console.error('Error uploading images to Firebase Storage:', error);
+            return res.status(400).json({
+                success: false,
+                error: 'Failed to upload one or more images'
+            });
+        }
     }
 
+    // Update the product with the modified images array
     req.body.images = images;
 
     try {
-        // Update the product
         const updatedProduct = await productModel.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
             runValidators: true,
@@ -150,9 +331,10 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
             product: updatedProduct
         });
     } catch (error) {
+        console.error('Error updating product:', error);
         res.status(400).json({
             success: false,
-            error: error.message
+            error: 'Failed to update product'
         });
     }
 });
