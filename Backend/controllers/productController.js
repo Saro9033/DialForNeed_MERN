@@ -271,14 +271,14 @@ exports.updateProduct = catchAsyncError(async (req, res, next) => {
 
         // Delete images from Firebase Storage
         for (const imageUrl of imagesToDelete) {
-        //     try {
-        //         const filename = imageUrl.split('/').pop(); // Extract filename from URL
-        //         const fileToDelete = bucket.file(`Product/${filename}`);
-        //         await fileToDelete.delete();
-        //     } catch (error) {
-        //         console.error('Error deleting image from Firebase Storage:', error);
-        //     }
-        // }
+            try {
+                const filename = imageUrl.split('/').pop(); // Extract filename from URL
+                const fileToDelete = bucket.file(`Product/${filename}`);
+                await fileToDelete.delete();
+            } catch (error) {
+                console.error('Error deleting image from Firebase Storage:', error);
+            }
+        }
 
         // Filter out deleted images from images array
         images = images.filter(img => !imagesToDelete.includes(img.image));
