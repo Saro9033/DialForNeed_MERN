@@ -70,8 +70,8 @@ console.log(Carousels)
                         {Carousels.map((carousel, index) => (
                             <Link to={carousel.link} key={carousel._id} className={`mr-3 w-100 `}>
                                 <img
-                                style={{height:windowWidth<490 ? '150px': windowWidth<990 ? '200px' : 'auto', objectFit:'cover'}}
-                                    className="rounded-2 w-100"
+                                style={{height:windowWidth<490 ? '150px': windowWidth<990 ? '200px' : '245px', objectFit:'cover'}}
+                                    className={`rounded-2 w-100 ${windowWidth<990 ? "":"mr-2"}`}
                                     src={carousel.image}
                                     alt="Carousel slide"
                                 />
