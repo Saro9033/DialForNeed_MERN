@@ -12,6 +12,14 @@ const Product = ({ isCategory, category, product, lg }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    const truncateTitle = (title, maxLength) => {
+  return title.length > maxLength ? title.slice(0, maxLength) + '...' : title;
+};
+
+      const maxLength = windowWidth < 990 ? 15 : 20;
+  const title = !isCategory && product?.name;
+  const displayedTitle = truncateTitle(title, maxLength);
+
     return (
         <Col key={isCategory ? category._id : product.id} xs={6} sm={6} md={6} lg={lg} className={`py-3 ${windowWidth < 990 ? 'px-1' : 'px-3'} mx-0 d-flex`}>
 
@@ -21,7 +29,7 @@ const Product = ({ isCategory, category, product, lg }) => {
                 <Card.Body className="px-3 d-flex flex-column pt-1 pb-3 mx-0">
                     <p className='mb-0'>
                         <Link style={{ color: '#393F42', textDecoration: 'none', fontSize: windowWidth < 990 ? '15px' : '18px' }} to={isCategory ? `/cateogry-products/${category?._id}` : `/product/${product._id}`}>
-                            {isCategory ? category?.title :   product.name  }
+                            {isCategory ? category?.title :  displayedTitle  }
                         </Link>
                     </p>
 
