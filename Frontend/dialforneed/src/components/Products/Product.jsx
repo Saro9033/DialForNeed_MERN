@@ -17,8 +17,7 @@ const Product = ({ isCategory, category, product, lg }) => {
     };
 
     const maxLength = windowWidth < 990 ? 15 : 20;
-    const title = isCategory ? category?.title : product?.name;
-    const displayedTitle = isCategory ? truncateTitle(title.toString(), 10) : truncateTitle(title.toString(), maxLength);
+    const titleCommon = isCategory ? category?.title : product?.name;
 
     return (
         <Col key={isCategory ? category._id : product.id} xs={6} sm={6} md={6} lg={lg} className={`py-3 ${windowWidth < 990 ? 'px-1' : 'px-3'} mx-0 d-flex`}>
@@ -46,7 +45,7 @@ const Product = ({ isCategory, category, product, lg }) => {
                             }}
                             to={isCategory ? `/category-products/${category?._id}` : `/product/${product?._id}`}
                         >
-                            {displayedTitle}
+                            { isCategory ? truncateTitle(titleCommon.toString(), 10) : truncateTitle(titleCommon.toString(), maxLength)}
                         </Link>
                     </p>
                     <div className="mt-auto">
