@@ -18,7 +18,7 @@ const Product = ({ isCategory, category, product, lg }) => {
 
     const maxLength = windowWidth < 990 ? 15 : 20;
     const title = isCategory ? category?.title : product?.name;
-    const displayedTitle = isCategory ? truncateTitle(title, 10) : truncateTitle(title, maxLength);
+    const displayedTitle = isCategory ? truncateTitle(title.toString(), 10) : truncateTitle(title.toString(), maxLength);
 
     return (
         <Col key={isCategory ? category._id : product.id} xs={6} sm={6} md={6} lg={lg} className={`py-3 ${windowWidth < 990 ? 'px-1' : 'px-3'} mx-0 d-flex`}>
