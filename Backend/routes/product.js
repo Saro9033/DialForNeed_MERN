@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const {addProduct, getAllProduct,getSingleProduct, updateProduct,deleteProduct,
-    createReview,getAllReviews, deleteReview, 
+    createReview,getAllReviews, deleteReview, triggerProducts
     getAdminProducts} = require('../controllers/productController')
 const {isAuthenticatedUser, authorizeRoles } = require('../middlewares/authenticate')
 
@@ -22,6 +22,7 @@ const storage = multer.diskStorage({
   
 
 router.route('/products').get( getAllProduct)
+router.route('/triggerproducts').get( triggerProducts)
 router.route('/product/:id').get(getSingleProduct)
                              
 
