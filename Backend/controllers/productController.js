@@ -19,6 +19,23 @@ const getTitle = async (Model, id, fieldName) => {
     }
 };
 
+// Trigger products
+exports.triggerProducts = catchAsyncError(async (req, res, next) => {
+    try {
+        const products = await productModel.find();
+        res.status(200).json({
+            success: true,
+            data: products,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch products",
+            error: error.message,
+        });
+    }
+});
+                                          
 //Get all product - /products
 exports.getAllProduct = catchAsyncError(async (req, res, next) => {
 
